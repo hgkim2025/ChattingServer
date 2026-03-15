@@ -1,3 +1,41 @@
-from django.shortcuts import render
+from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-# Create your views here.
+from .models import Room, RoomMember
+from .serializers import InviteSerializer
+
+User = get_user_model()
+
+
+def success_response(data, status_code=200):
+    return Response({"success": True, "data": data}, status=status_code)
+
+
+def error_response(message, status_code=400):
+    return Response({"success": False, "message": message}, status=status_code)
+
+
+class RoomCreateView(APIView):
+    """채팅방 생성. 생성한 유저는 자동으로 해당 방의 멤버가 됨."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        name = request.data.get("name")
+        room_type = "group"
+
+        if not name:
+            return error_response("name을 입력해주세요.", status.HTTP_400_BAD_REQUEST)
+
+        room = Room.objects.create(name=name, type=room_type)
+        RoomMember.objects.create(room=room, user=request.user)
+
+        data = {
+            "id": room.id,
+            "name": room.name,
+            "type": room.type,
+            "created_at": room.created_at,
+        }
+        return success_response(data, status_code=status.HTTP_201_CREATED)
