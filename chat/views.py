@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Room, RoomMember
+from .serializers import RoomSerializer
 
 User = get_user_model()
 
@@ -17,9 +18,14 @@ def error_response(message, status_code=400):
     return Response({"success": False, "message": message}, status=status_code)
 
 
-class RoomCreateView(APIView):
-    """채팅방 생성. 생성한 유저는 자동으로 해당 방의 멤버가 됨."""
+class RoomListCreateView(APIView):
+    """GET: 내가 속한 채팅방 목록. POST: 채팅방 생성(생성한 유저는 자동으로 멤버)."""
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rooms = Room.objects.filter(members__user=request.user).distinct().order_by("-created_at")
+        serializer = RoomSerializer(rooms, many=True)
+        return success_response(serializer.data)
 
     def post(self, request):
         name = request.data.get("name")
